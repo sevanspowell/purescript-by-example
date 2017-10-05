@@ -89,10 +89,10 @@ onlyFiles :: Path -> Array Path
 onlyFiles = filter (\f -> not $ isDirectory f) <<< allFiles
 
 largestFile :: Path -> Path
-largestFile = foldl (\xs x -> if size(x) > size(xs) then x else xs) root <<< onlyFiles
+largestFile dir = foldl (\xs x -> if size(x) > size(xs) then x else xs) dir $ onlyFiles dir
 
 smallestFile :: Path -> Path
-smallestFile = foldl (\xs x -> if (isDirectory xs || size(x) < size(xs)) then x else xs) root <<< onlyFiles
+smallestFile dir = foldl (\xs x -> if (isDirectory xs && not isDirectory x) || (size(x) < size(xs)) then x else xs) dir $ onlyFiles dir
 
 whereIs :: String -> Maybe Path
 whereIs name = foldr (\x xs -> Just x) Nothing $ do
