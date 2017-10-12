@@ -1,6 +1,10 @@
 module Main where
 
 import Prelude
+import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Array (tail)
+import Data.Array.Partial (head) as Partial
+import Partial.Unsafe (unsafePartial)
 
 newtype Complex = Complex
   { real :: Number
@@ -22,6 +26,10 @@ instance eqComplexNumber :: Eq Complex where
   eq a b = eqComplex a b
 
 data NonEmpty a = NonEmpty a (Array a)
+
+nonEmpty :: forall a. Array a -> Maybe (NonEmpty a)
+nonEmpty [] = Nothing
+nonEmpty xs = Just (NonEmpty (unsafePartial Partial.head xs) (fromMaybe [] $ tail xs))
 
 showNonEmpty :: forall a. Show a => Show (Array a) => NonEmpty a -> String
 showNonEmpty (NonEmpty x xs) = "[NonEmpty " <> show x <> " " <> show xs <> "]"
