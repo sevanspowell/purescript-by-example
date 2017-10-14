@@ -5,6 +5,8 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Array (tail)
 import Data.Array.Partial (head) as Partial
 import Partial.Unsafe (unsafePartial)
+import Data.Foldable
+import Data.Monoid
 
 newtype Complex = Complex
   { real :: Number
@@ -55,6 +57,16 @@ nonEmptyMap f (NonEmpty x xs) = NonEmpty (f x) (map f xs)
 instance functorNonEmpty :: Functor (Array) => Functor NonEmpty where
   map f (NonEmpty x xs) = NonEmpty (f x) (map f xs)
 
+instance foldableNonEmpty :: Foldable (Array) => Foldable NonEmpty where
+  foldMap :: forall a m. Monoid m => (a -> m) -> NonEmpty a -> m
+  foldMap a (NonEmpty x xs) = foldMap a xs
+
+  foldl :: forall a b. (b -> a -> b) -> b -> NonEmpty a -> b
+  foldl f acc (NonEmpty x xs) = foldl f (f acc x) xs
+
+  foldr :: forall a b. (a -> b -> b) -> b -> NonEmpty a -> b
+  foldr f acc (NonEmpty x xs) = f x (foldr f acc xs)
+
 data Extended a = Finite a | Infinite
 
 instance eqExtendedInstance :: (Eq a) => Eq (Extended a) where
@@ -67,3 +79,4 @@ instance ordExtendedInstance :: (Eq a, Ord a) => Ord (Extended a) where
   compare (Finite _ ) Infinite = LT 
   compare Infinite (Finite _) = GT
   compare (Finite x) (Finite y) = compare x y
+
