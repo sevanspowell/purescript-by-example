@@ -1,7 +1,7 @@
 module Main where
 
 import Prelude
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe, fromJust)
 import Data.Array (tail)
 import Data.Array.Partial (head) as Partial
 import Partial.Unsafe (unsafePartial)
@@ -59,7 +59,7 @@ instance functorNonEmpty :: Functor (Array) => Functor NonEmpty where
 
 instance foldableNonEmpty :: Foldable (Array) => Foldable NonEmpty where
   foldMap :: forall a m. Monoid m => (a -> m) -> NonEmpty a -> m
-  foldMap a (NonEmpty x xs) = foldMap a xs
+  foldMap f (NonEmpty x xs) = foldMap f (xs)
 
   foldl :: forall a b. (b -> a -> b) -> b -> NonEmpty a -> b
   foldl f acc (NonEmpty x xs) = foldl f (f acc x) xs
@@ -80,3 +80,21 @@ instance ordExtendedInstance :: (Eq a, Ord a) => Ord (Extended a) where
   compare Infinite (Finite _) = GT
   compare (Finite x) (Finite y) = compare x y
 
+data OneMore f a = OneMore a (f a)
+
+-- instance foldableOneMore :: Foldable f => Foldable (OneMore f) where
+--   foldMap :: forall a m. Monoid m => (a -> m) -> OneMore a -> m
+--   foldMap f (OneMore x xs) = foldMap f (x <> xs)
+
+--   foldl :: forall a b. (b -> a -> b) -> b -> OneMore a -> b
+--   foldl f acc (OneMore x xs) = foldl f (f acc x) xs
+
+--   foldr :: forall a b. (a -> b -> b) -> b -> OneMore a -> b
+--   foldr f acc (OneMore x xs) = f x (foldr f acc xs)
+
+maxArray :: Partial => Array Int -> Int
+maxArray xs = fromJust $ maximum xs
+
+-- instance repeatAction :: Action Multiply String
+--   append (Multiply 0) (String s) = ""
+--   append (Multiply n) (String s) = 
