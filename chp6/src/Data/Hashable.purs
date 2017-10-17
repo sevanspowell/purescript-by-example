@@ -1,11 +1,12 @@
 module Data.Hashable
-  ( HashCode
+  ( HashCode(..)
   , hashCode
   , class Hashable
   , hash
   , hashEqual
   , combineHashes
   , hashDuplicate
+  , Hour(..)
   ) where
 
 import Prelude
@@ -64,3 +65,10 @@ hashDuplicate [] = false
 hashDuplicate [x] = false
 hashDuplicate xs = (length $ nubBy hashEqual xs) /= (length xs)
 
+newtype Hour = Hour Int
+
+instance eqHour :: Eq Hour where
+  eq (Hour n) (Hour m) = mod n 12 == mod m 12
+
+instance hashHour :: Hashable Hour where
+  hash (Hour h) = HashCode (h `mod` 12)
