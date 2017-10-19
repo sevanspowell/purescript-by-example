@@ -1,6 +1,7 @@
 module Data.AddressBook.Validation where
 
 import Prelude
+
 import Data.AddressBook (Address(..), Person(..), PhoneNumber(..), address, person, phoneNumber)
 import Data.Either (Either(..))
 import Data.String (length)
@@ -36,9 +37,9 @@ matches field _     _     = invalid ["Field '" <> field <> "' did not match the 
 
 validateAddress :: Address -> V Errors Address
 validateAddress (Address o) =
-  address <$> (nonEmpty "Street" o.street *> pure o.street)
-          <*> (nonEmpty "City"   o.city   *> pure o.city)
-          <*> (lengthIs "State" 2 o.state *> pure o.state)
+  address <$> (notWhitespace "Street" o.street *> pure o.street)
+          <*> (notWhitespace "City"   o.city   *> pure o.city)
+          <*> (matches "State" stateRegex o.state *> pure o.state)
 
 validatePhoneNumber :: PhoneNumber -> V Errors PhoneNumber
 validatePhoneNumber (PhoneNumber o) =
@@ -47,10 +48,25 @@ validatePhoneNumber (PhoneNumber o) =
 
 validatePerson :: Person -> V Errors Person
 validatePerson (Person o) =
-  person <$> (nonEmpty "First Name" o.firstName *> pure o.firstName)
-         <*> (nonEmpty "Last Name"  o.lastName  *> pure o.lastName)
+  person <$> (notWhitespace "First Name" o.firstName *> pure o.firstName)
+         <*> (notWhitespace "Last Name"  o.lastName  *> pure o.lastName)
          <*> validateAddress o.homeAddress
          <*> (arrayNonEmpty "Phone Numbers" o.phones *> traverse validatePhoneNumber o.phones)
 
 validatePerson' :: Person -> Either Errors Person
 validatePerson' p = unV Left Right $ validatePerson p
+
+stateRegex :: Regex
+stateRegex =
+  unsafePartial
+    case regex "^[a-zA-Z]{2}$" noFlags of
+      Right r -> r
+
+notWhitespaceRegex :: Regex
+notWhitespaceRegex =
+  unsafePartial
+    case regex "^.*[^\\s]+.*$" noFlags of
+      Right r -> r
+
+notWhitespace :: String -> String -> V Errors Unit
+notWhitespace fieldName str = matches fieldName notWhitespaceRegex str
