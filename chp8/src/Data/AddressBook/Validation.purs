@@ -108,3 +108,17 @@ filterM f (x : xs) = do
 -- Therefore pure (f a) <*> (pure b) is equal to:
 --   pure (f a b)
 -- So, lift2 f (pure a) (pure b) is equal to pure (f a b)
+--
+-- bind :: m a -> (a -> m b) -> m b
+-- bind (>>=, do notation) takes the element inside the monad, "lifts" it out
+-- and applies it to the function. The function must return a new monad.
+--
+-- Functor <= Apply <= Bind
+-- Can define map in terms of bind:
+-- map f a = do
+-- a' <- a
+-- pure (f a')
+--
+-- OR:
+--
+-- pure (a >>= f)
