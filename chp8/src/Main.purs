@@ -1,76 +1,130 @@
 module Main where
 
 import Prelude
-import Control.Monad.Eff
-import Control.Monad.Eff.Random
-import Control.Monad.ST (ST, newSTRef, readSTRef, modifySTRef, runST)
-import Control.Monad.Eff.Console (CONSOLE, log, logShow)
-import Control.Monad.Eff.Exception (EXCEPTION, throwException, Error, catchException, error, message)
-import Control.Plus (empty)
-import Data.Array ((..))
-import Data.Int (round, toNumber)
-import Data.Maybe
-import Data.Tuple
-import Math (pow)
 
-countThrows :: Int -> Array (Array Int)
-countThrows n = do
-  x <- 1 .. 6
-  y <- 1 .. 6
-  if x + y == n
-    then pure [x, y]
-    else empty
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Console (CONSOLE, log)
+import Control.Monad.Except (runExcept)
+import DOM (DOM)
+import DOM.HTML (window)
+import DOM.HTML.Types (htmlDocumentToDocument)
+import DOM.HTML.Window (document)
+import DOM.Node.NonElementParentNode (getElementById)
+import DOM.Node.Types (ElementId(..), documentToNonElementParentNode)
+import Data.AddressBook (Address(..), Person(..), PhoneNumber(..), examplePerson)
+import Data.AddressBook.Validation (Errors, validatePerson')
+import Data.Array ((..), length, modifyAt, zipWith)
+import Data.Either (Either(..))
+import Data.Foldable (for_)
+import Data.Foreign (ForeignError, readString, toForeign)
+import Data.Foreign.Index (index)
+import Data.List.NonEmpty (NonEmptyList(..))
+import Data.Maybe (fromJust, fromMaybe)
+import Partial.Unsafe (unsafePartial)
+import React (Event, ReactClass, ReactState, ReactThis, ReadWrite, createClass, createFactory, readState, spec, writeState)
+import React.DOM as D
+import React.DOM.Props as P
+import ReactDOM (render)
 
-simulate :: forall eff h. Number -> Number -> Int -> Eff (st :: ST h | eff) Number
-simulate x0 v0 time = do
-  ref <- newSTRef { x: x0, v: v0 }
-  forE 0 (time * 1000) \_ -> do
-    _ <- modifySTRef ref \o ->
-      { v: o.v - 9.81 * 0.001
-      , x: o.x + o.v * 0.001
-      }
-    pure unit
-  final <- readSTRef ref
-  pure final.x
+newtype AppState = AppState
+  { person :: Person
+  , errors :: Errors
+  }
 
-simulate' :: Number -> Number -> Number -> Number
-simulate' x0 v0 time = runPure (runST (simulate x0 v0 (round time)))
+initialState :: AppState
+initialState = AppState
+  { person: examplePerson
+  , errors: []
+  }
 
--- inline above
-simulate'' :: forall eff h. Number -> Number -> Int -> Number
-simulate'' x0 v0 time = runPure $ runST do
-  ref <- newSTRef { x: x0, v: v0 }
-  forE 0 (time * 1000) \_ -> do
-    _ <- modifySTRef ref \o ->
-      { v: o.v - 9.81 * 0.001
-      , x: o.x + o.v * 0.001
-      }
-    pure unit
-  final <- readSTRef ref
-  pure final.x
+valueOf :: Event -> Either (NonEmptyList ForeignError) String
+valueOf e = runExcept do
+  target <- index (toForeign e) "target"
+  value <- index target "value"
+  readString value
 
-safeDivide :: forall e. Int -> Int -> Eff (exception :: EXCEPTION | e) (Maybe Int)
-safeDivide _ 0 = throwException $ error "Divide by zero"
-safeDivide a b = pure (Just (a / b))
+updateAppState
+  :: forall props eff
+  . ReactThis props AppState
+  -> (String -> Person)
+  -> Event
+  -> Eff (console :: CONSOLE
+         , state :: ReactState ReadWrite
+         | eff
+         ) Unit
+updateAppState ctx update e =
+  for_ (valueOf e) \s -> do
+    let newPerson = update s
+    log "Running validators"
+    case validatePerson' newPerson of
+      Left errors -> writeState ctx (AppState { person: newPerson, errors: errors })
+      Right _ -> writeState ctx (AppState { person: newPerson, errors: [] })
 
-safeDivideTest :: Int -> Int -> Eff (console :: CONSOLE) Unit
-safeDivideTest a b = catchException (logShow) $ safeDivide a b >>= (logShow)
+addressBook :: forall props. ReactClass props
+addressBook = createClass $ spec initialState \ctx -> do
+  AppState { person: Person person@{ homeAddress: Address address }, errors } <- readState ctx
 
-generatePoint :: forall eff. Eff (random :: RANDOM | eff) (Tuple Number Number)
-generatePoint = do
-  x <- random
-  y <- random
-  pure (Tuple x y)
+  let renderValidationError err = D.li' [D.text err]
+      renderValidationErrors [] = []
+      renderValidationErrors xs =
+        [ D.div [ P.className "alert alert-danger" ]
+                [ D.ul' (map renderValidationError xs) ]
+        ]
 
--- Based off Becky Conning's answer: https://github.com/beckyconning/purescript-by-example/blob/master/chapter8/src/Exercises.purs
-estimatePi :: Int -> Eff (random :: RANDOM) Number
-estimatePi n = runST (do
-  pointsInCircleRef <- newSTRef 0
-  forE 0 n \_ -> do
-    point <- generatePoint
-    _ <- modifySTRef pointsInCircleRef ((+) $ if pointIsInUnitCircle point then 1 else 0)
-    pure (unit)
-  pointsInCircleCount <- readSTRef pointsInCircleRef
-  pure ((4.0 * toNumber(pointsInCircleCount)) / toNumber(n)))
-  where
-    pointIsInUnitCircle (Tuple x y) = (((x - 0.5) `pow` 2.0) + ((y - 0.5) `pow` 2.0)) < (0.5 `pow` 2.0)
+      formField name hint value update =
+        D.div [ P.className "form-group" ]
+              [ D.label [P.className "col-sm-2 control-label" ]
+                        [ D.text name ]
+              , D.div [ P.className "col-sm-3" ]
+                      [ D.input [ P._type "text"
+                                , P.className "form-control"
+                                , P.placeholder hint
+                                , P.value value
+                                , P.onChange (updateAppState ctx update)
+                                ] []
+                      ]
+              ]
+
+      renderPhoneNumber (PhoneNumber phone) index =
+        formField (show phone."type") "XXX-XXX-XXXX" phone.number \s ->
+          Person $ person { phones = fromMaybe person.phones $ modifyAt index (updatePhoneNumber s) person.phones }
+
+      updateFirstName s = Person $ person { firstName = s }
+      updateLastName  s = Person $ person { lastName = s }
+
+      updateStreet s = Person $ person { homeAddress = Address $ address { street = s } }
+      updateCity   s = Person $ person { homeAddress = Address $ address { city   = s } }
+      updateState  s = Person $ person { homeAddress = Address $ address { state  = s } }
+
+      updatePhoneNumber s (PhoneNumber o) = PhoneNumber $ o { number = s }
+
+  pure $
+    D.div [ P.className "container" ]
+          [ D.div [ P.className "row" ]
+                  (renderValidationErrors errors)
+          , D.div [ P.className "row" ]
+                  [ D.form [ P.className "form-horizontal" ] $
+                           [ D.h3' [ D.text "Basic Information" ]
+
+                             , formField "First Name" "First Name" person.firstName updateFirstName
+                             , formField "Last Name" "Last Name" person.lastName updateLastName
+
+                             , D.h3' [ D.text "Address" ]
+
+                             , formField "Street" "Street" address.street updateStreet
+                             , formField "City"   "City"   address.city   updateCity
+                             , formField "State"  "State"  address.state  updateState
+
+                             , D.h3' [ D.text "Contact Information" ]
+                           ]
+                           <> zipWith renderPhoneNumber person.phones (0 .. length person.phones)
+                  ]
+          ]
+
+main :: Eff (console :: CONSOLE, dom :: DOM) Unit
+main = void do
+  log "Rendering address book component"
+  let component = D.div [] [ createFactory addressBook unit ]
+  doc <- window >>= document
+  ctr <- getElementById (ElementId "main") (documentToNonElementParentNode (htmlDocumentToDocument doc))
+  render component (unsafePartial fromJust ctr)
