@@ -3,5 +3,5 @@
 !/.gitignore
 bower_components
 output
-chp8/dist/Main.js
+chp*/dist
 chp*/node_modules
