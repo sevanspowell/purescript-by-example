@@ -27,6 +27,7 @@ translate dx dy shape = shape
 
 type Point = { x :: Number, y :: Number }
 
+-- Based off https://github.com/beckyconning/purescript-by-example/blob/2b2c5454b72b77fc164203fd244e96fd22b8f60f/chapter9/src/Rectangle.purs
 renderPath
   :: forall eff
    . Context2D
