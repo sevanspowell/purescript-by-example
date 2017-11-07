@@ -25,7 +25,9 @@ lsystem init prod interpret n state = executeSentence $ buildSentence init n
 
   executeSentence = foldM interpret state
 
-data Alphabet = L | R | F
+type Angle = Number
+
+data Alphabet = L Angle | R Angle | F
 
 type Sentence = Array Alphabet
 
@@ -41,17 +43,26 @@ main = void $ unsafePartial do
   ctx <- getContext2D canvas
 
   let
+    l :: Alphabet
+    l = L $ Math.pi / 3.0
+
+    r :: Alphabet
+    r = R $ Math.pi / 3.0
+
+    r2 :: Alphabet
+    r2 = R $ Math.pi / 6.0
+
     initial :: Sentence
-    initial = [F, R, R, F, R, R, F, R, R]
+    initial = [F, r2, r, F, r, r, F, r, r]
 
     productions :: Alphabet -> Sentence
-    productions L = [L]
-    productions R = [R]
-    productions F = [F, L, F, R, R, F, L, F]
+    productions (L a) = [L a]
+    productions (R a) = [R a]
+    productions F = [F, l, F, r, r, F, l, F]
 
     interpret :: State -> Alphabet -> Eff (canvas :: CANVAS) State
-    interpret state L = pure $ state { theta = state.theta - Math.pi / 3.0 }
-    interpret state R = pure $ state { theta = state.theta + Math.pi / 3.0 }
+    interpret state (L a) = pure $ state { theta = state.theta - a }
+    interpret state (R a) = pure $ state { theta = state.theta + a }
     interpret state F = do
       let x = state.x + Math.cos state.theta * 1.5
           y = state.y + Math.sin state.theta * 1.5
