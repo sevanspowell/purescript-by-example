@@ -5,7 +5,10 @@ import Prelude
 import Control.Monad.Eff (Eff)
 import Data.Array (concatMap, foldM)
 import Data.Maybe (Maybe(..))
-import Graphics.Canvas (CANVAS, getCanvasElementById, getContext2D, lineTo, moveTo, setFillStyle, setStrokeStyle, strokePath, fillPath, closePath)
+import Graphics.Canvas (CANVAS, closePath, fillPath, getCanvasElementById,
+                        getContext2D, lineTo, moveTo, setFillStyle,
+                        setShadowBlur, setShadowColor, setShadowOffsetX,
+                        setShadowOffsetY, setStrokeStyle, strokePath)
 import Math as Math
 import Partial.Unsafe (unsafePartial)
 
@@ -58,9 +61,14 @@ main = void $ unsafePartial do
     initialState :: State
     initialState = { x: 120.0, y: 200.0, theta: 0.0 }
 
-  _ <- setFillStyle "#000000" ctx
   _ <- moveTo ctx initialState.x initialState.y
-  
+
+  _ <- setFillStyle "#ABE188" ctx
+  _ <- setShadowOffsetX 10.0 ctx
+  _ <- setShadowOffsetY 10.0 ctx
+  _ <- setShadowBlur 3.0 ctx
+  _ <- setShadowColor "#777" ctx
+
   fillPath ctx $ do 
     _ <- lsystem initial productions interpret 5 initialState
     closePath ctx
