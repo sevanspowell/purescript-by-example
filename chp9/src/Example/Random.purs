@@ -7,10 +7,18 @@ import Control.Monad.Eff.Random (RANDOM, random)
 import Data.Array ((..))
 import Data.Foldable (for_)
 import Data.Maybe (Maybe(..))
-import Graphics.Canvas (CANVAS, strokePath, fillPath, arc, setStrokeStyle,
-                        setFillStyle, getContext2D, getCanvasElementById)
+import Graphics.Canvas (Context2D, CANVAS, strokePath, fillPath, arc, setStrokeStyle, setFillStyle, getContext2D, getCanvasElementById)
 import Math as Math
 import Partial.Unsafe (unsafePartial)
+
+strokeAndFillPath
+  :: forall eff a
+   . Context2D
+  -> Eff (canvas :: CANVAS | eff) a 
+  -> Eff (canvas :: CANVAS | eff) a
+strokeAndFillPath ctx path = do
+  _ <- fillPath ctx path
+  strokePath ctx path
 
 main :: Eff (canvas :: CANVAS, random :: RANDOM) Unit
 main = void $ unsafePartial do
@@ -33,5 +41,4 @@ main = void $ unsafePartial do
          , end   : Math.pi * 2.0
          }
 
-    _ <- fillPath ctx path
-    strokePath ctx path
+    strokeAndFillPath ctx path
