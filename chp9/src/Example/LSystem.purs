@@ -25,9 +25,7 @@ lsystem init prod interpret n state = executeSentence $ buildSentence init n
 
   executeSentence = foldM interpret state
 
-type Angle = Number
-
-data Alphabet = L Angle | R Angle | F
+data Alphabet = L | R | F Boolean
 
 type Sentence = Array Alphabet
 
@@ -43,27 +41,19 @@ main = void $ unsafePartial do
   ctx <- getContext2D canvas
 
   let
-    l :: Alphabet
-    l = L $ Math.pi / 3.0
-
-    r :: Alphabet
-    r = R $ Math.pi / 3.0
-
-    r2 :: Alphabet
-    r2 = R $ Math.pi / 6.0
-
     initial :: Sentence
-    initial = [F, r2, r, F, r, r, F, r, r]
+    initial = [(F true)]
 
     productions :: Alphabet -> Sentence
-    productions (L a) = [L a]
-    productions (R a) = [R a]
-    productions F = [F, l, F, r, r, F, l, F]
+    productions L = [L]
+    productions R = [R]
+    productions (F false) = [(F false), L, (F true), L, (F false), R, (F true), R, (F false), R, (F true), R, (F false), L, (F true), L, (F false)]
+    productions (F true) = [(F true), R, (F false), R, (F true), L, (F false), L, (F true), L, (F false), L, (F true), R, (F false), R, (F true)]
 
     interpret :: State -> Alphabet -> Eff (canvas :: CANVAS) State
-    interpret state (L a) = pure $ state { theta = state.theta - a }
-    interpret state (R a) = pure $ state { theta = state.theta + a }
-    interpret state F = do
+    interpret state L = pure $ state { theta = state.theta - Math.pi / 3.0 }
+    interpret state R = pure $ state { theta = state.theta + Math.pi / 3.0 }
+    interpret state (F _) = do
       let x = state.x + Math.cos state.theta * 1.5
           y = state.y + Math.sin state.theta * 1.5
       _ <- lineTo ctx x y
@@ -81,5 +71,5 @@ main = void $ unsafePartial do
   _ <- setShadowColor "#777" ctx
 
   fillPath ctx $ do 
-    _ <- lsystem initial productions interpret 5 initialState
+    _ <- lsystem initial productions interpret 4 initialState
     closePath ctx
