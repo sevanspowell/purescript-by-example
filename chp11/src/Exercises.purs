@@ -1,15 +1,20 @@
 module Exercises where
 
+import Data.Int
 import Control.Monad.Reader
 import Control.Monad.Reader.Class
 import Control.Monad.State
 import Control.Monad.State.Class
-import Prelude
-
-import Data.Array (replicate)
+import Control.Monad.Writer
+import Control.Monad.Writer.Class
+import Data.Array
 import Data.Foldable (traverse_)
 import Data.String (joinWith, toCharArray)
 import Data.Traversable (sequence)
+import Data.Monoid.Additive
+import Data.Tuple
+import Prelude
+
 
 testParens :: String -> Boolean
 testParens s = (execState (unclosedCount $ toCharArray s) 0) == 0
@@ -46,3 +51,38 @@ cat xs = map (joinWith "\n") $ sequence xs
 
 render :: Doc -> String
 render d = runReader d 0
+
+-- sumArray :: Array Number -> State Number Unit
+-- sumArray = traverse_ \n -> modify \sum -> sum + n
+
+sumArray :: Array Number -> Writer (Additive Number) Unit
+sumArray = traverse_ $ \n -> tell (Additive n)
+-- Tell appends provided value to current accumulated result
+-- Additive monoid pluses n on append:
+--   Additive x <> Additive y == Additive (x + y)
+
+collatzIterationsLog :: Int -> Tuple Int (Array String)
+collatzIterationsLog = runWriter <<< f 0
+  where
+  f :: Int -> Int -> Writer (Array String) Int
+  f x 1 = do
+    _ <- log 1
+    pure x
+  f x n = do
+    _ <- log n
+    f (x + 1) (collatz n)
+
+  log :: forall t. MonadTell (Array String) t => Int -> t Unit
+  log n = tell ["collatzLog " <> show n]
+
+collatzIterations :: Int -> Int
+collatzIterations = f 0
+  where
+  f :: Int -> Int -> Int
+  f x 1 = x
+  f x n = f (x + 1) (collatz n)
+
+collatz :: Int -> Int
+collatz n = if even n
+              then (n / 2)
+              else ((3 * n) + 1)
