@@ -15,7 +15,10 @@ import Data.Monoid.Additive
 import Data.Tuple
 import Data.Either
 import Prelude
-
+import Control.Monad.Writer
+import Control.Monad.Writer.Class
+import Control.Monad.Error.Class
+import Control.Monad.Except.Trans
 
 testParens :: String -> Boolean
 testParens s = (execState (unclosedCount $ toCharArray s) 0) == 0
@@ -97,3 +100,10 @@ split = do
     _ -> do
       put (drop 1 s)
       pure (take 1 s)
+
+writerAndExceptT :: ExceptT String (Writer (Array String)) String
+writerAndExceptT = do
+  _ <- lift $ tell ["Before the error"]
+  _ <- throwError "Error!"
+  _ <- lift $ tell ["After the error"]
+  pure "Return Value"
