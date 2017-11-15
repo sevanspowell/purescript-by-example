@@ -9,10 +9,11 @@ import Control.Monad.Writer
 import Control.Monad.Writer.Class
 import Data.Array
 import Data.Foldable (traverse_)
-import Data.String (joinWith, toCharArray)
+import Data.String (joinWith, toCharArray, drop, take)
 import Data.Traversable (sequence)
 import Data.Monoid.Additive
 import Data.Tuple
+import Data.Either
 import Prelude
 
 
@@ -83,6 +84,16 @@ collatzIterations = f 0
   f x n = f (x + 1) (collatz n)
 
 collatz :: Int -> Int
+collatz 1 = 1
 collatz n = if even n
               then (n / 2)
               else ((3 * n) + 1)
+
+split :: StateT String (Either String) String
+split = do
+  s <- get
+  case s of
+    "" -> lift $ Left "Empty string"
+    _ -> do
+      put (drop 1 s)
+      pure (take 1 s)
