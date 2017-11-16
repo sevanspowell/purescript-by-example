@@ -20,7 +20,9 @@ import Control.Comonad (extract)
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Data.Foldable (traverse_)
 import Data.Identity (Identity(..))
-import Data.String (joinWith, toCharArray, drop, take)
+import Data.Maybe (Maybe(..))
+import Data.String (Pattern(..), drop, joinWith, stripPrefix, take, toCharArray)
+import Data.String as Data.String
 import Data.Traversable (sequence)
 
 testParens :: String -> Boolean
@@ -136,3 +138,19 @@ runParser p s = extract $ runExceptT $ runWriterT $ runStateT p s
 safeDivide :: Number -> Number -> ExceptT Errors Identity Number
 safeDivide a 0.0 = throwError ["Divide by zero"]
 safeDivide a b = pure (a / b)
+
+string :: String -> Parser String
+string "" = lift $ lift $ throwError ["Empty string provided"]
+string xs = do
+  s <- get
+  lift $ tell ["The state is " <> show s]
+
+  case (stripPrefix (Pattern xs) s) of
+    Nothing -> lift $ lift $ throwError ["Not a prefix"]
+    (Just leftOver) -> do
+      put (drop prefixLength s)
+      pure (xs) 
+
+  where
+    prefixLength :: Int
+    prefixLength = Data.String.length $ xs
