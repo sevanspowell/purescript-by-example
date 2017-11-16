@@ -1,24 +1,27 @@
 module Exercises where
 
-import Data.Int
+import Control.Monad.Error.Class
 import Control.Monad.Reader
 import Control.Monad.Reader.Class
 import Control.Monad.State
 import Control.Monad.State.Class
 import Control.Monad.Writer
-import Control.Monad.Writer.Class
-import Data.Array
-import Data.Foldable (traverse_)
-import Data.String (joinWith, toCharArray, drop, take)
-import Data.Traversable (sequence)
-import Data.Monoid.Additive
-import Data.Tuple
-import Data.Either
-import Prelude
 import Control.Monad.Writer
 import Control.Monad.Writer.Class
-import Control.Monad.Error.Class
-import Control.Monad.Except.Trans
+import Control.Monad.Writer.Class
+import Data.Array
+import Data.Either
+import Data.Int
+import Data.Monoid.Additive
+import Data.Tuple
+import Prelude
+
+import Control.Comonad (extract)
+import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
+import Data.Foldable (traverse_)
+import Data.Identity (Identity(..))
+import Data.String (joinWith, toCharArray, drop, take)
+import Data.Traversable (sequence)
 
 testParens :: String -> Boolean
 testParens s = (execState (unclosedCount $ toCharArray s) 0) == 0
@@ -107,3 +110,29 @@ writerAndExceptT = do
   _ <- throwError "Error!"
   _ <- lift $ tell ["After the error"]
   pure "Return Value"
+
+type Errors = Array String
+
+type Log = Array String
+
+type Parser = StateT String (WriterT Log (ExceptT Errors Identity))
+
+split' :: Parser String
+split' = do
+  s <- get
+  lift $ tell ["The state is " <> show s]
+  case s of
+    "" -> lift $ lift $ throwError ["Empty string"]
+    _ -> do
+      put (drop 1 s)
+      pure (take 1 s)
+
+-- extract, from Pursuit:
+-- Comonad extends the Extend class with the extract function which extracts a
+-- value, discarding the comonadic context.
+-- Comonad is the dual of Monad, and extract is the dual of pure.
+runParser p s = extract $ runExceptT $ runWriterT $ runStateT p s
+
+safeDivide :: Number -> Number -> ExceptT Errors Identity Number
+safeDivide a 0.0 = throwError ["Divide by zero"]
+safeDivide a b = pure (a / b)
