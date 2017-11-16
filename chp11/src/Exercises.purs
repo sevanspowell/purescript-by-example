@@ -61,6 +61,20 @@ cat xs = map (joinWith "\n") $ sequence xs
 render :: Doc -> String
 render d = runReader d 0
 
+-- type Printer = ReaderT Level (WriterT (Array String) Identity)
+
+-- line' :: String -> Printer String
+-- line' s = do
+--   currentIndent <- ask 
+--   tell $ [(addIndent currentIndent <> s)]
+
+--   where
+--     addIndent :: Int -> String
+--     addIndent n = joinWith "" (replicate n indentationString)
+
+--     indentationString :: String
+--     indentationString = " "
+
 -- sumArray :: Array Number -> State Number Unit
 -- sumArray = traverse_ \n -> modify \sum -> sum + n
 
