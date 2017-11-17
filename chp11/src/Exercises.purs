@@ -1,29 +1,30 @@
 module Exercises where
 
+import Control.Comonad (extract)
 import Control.Monad.Error.Class
+import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Control.Monad.Reader
 import Control.Monad.Reader.Class
 import Control.Monad.State
 import Control.Monad.State.Class
 import Control.Monad.Writer
-import Control.Monad.Writer
 import Control.Monad.Writer.Class
-import Control.Monad.Writer.Class
+import Control.MonadPlus
+import Control.MonadZero
 import Data.Array
 import Data.Either
-import Data.Int
-import Data.Monoid.Additive
-import Data.Tuple
-import Prelude
-
-import Control.Comonad (extract)
-import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
 import Data.Foldable (traverse_)
 import Data.Identity (Identity(..))
+import Data.Int
+import Data.List as L
 import Data.Maybe (Maybe(..))
-import Data.String (Pattern(..), drop, joinWith, stripPrefix, take, toCharArray)
+import Data.Monoid.Additive
+import Data.String (Pattern(..), drop, joinWith, stripPrefix, take, toCharArray, toLower, toUpper)
 import Data.String as Data.String
 import Data.Traversable (sequence)
+import Data.Tuple
+import Prelude
+import Split as S
 
 testParens :: String -> Boolean
 testParens s = (execState (unclosedCount $ toCharArray s) 0) == 0
@@ -136,9 +137,9 @@ type Parser = StateT String (WriterT Log (ExceptT Errors Identity))
 split' :: Parser String
 split' = do
   s <- get
-  lift $ tell ["The state is " <> show s]
+  tell ["The state is " <> show s]
   case s of
-    "" -> lift $ lift $ throwError ["Empty string"]
+    "" -> throwError ["Empty string"]
     _ -> do
       put (drop 1 s)
       pure (take 1 s)
@@ -147,20 +148,20 @@ split' = do
 -- Comonad extends the Extend class with the extract function which extracts a
 -- value, discarding the comonadic context.
 -- Comonad is the dual of Monad, and extract is the dual of pure.
-runParser p s = extract $ runExceptT $ runWriterT $ runStateT p s
+runParser' p s = extract $ runExceptT $ runWriterT $ runStateT p s
 
 safeDivide :: Number -> Number -> ExceptT Errors Identity Number
 safeDivide a 0.0 = throwError ["Divide by zero"]
 safeDivide a b = pure (a / b)
 
 string :: String -> Parser String
-string "" = lift $ lift $ throwError ["Empty string provided"]
+string "" = throwError ["Empty string provided"]
 string xs = do
   s <- get
   lift $ tell ["The state is " <> show s]
 
   case (stripPrefix (Pattern xs) s) of
-    Nothing -> lift $ lift $ throwError ["Not a prefix"]
+    Nothing -> throwError ["Not a prefix"]
     (Just leftOver) -> do
       put (drop prefixLength s)
       pure (xs) 
@@ -168,3 +169,53 @@ string xs = do
   where
     prefixLength :: Int
     prefixLength = Data.String.length $ xs
+
+upper' :: Parser String
+upper' = do
+  s <- split'
+  guard $ toUpper s == s
+  pure s
+
+lower' :: Parser String
+lower' = do
+  s <- split'
+  guard $ toLower s == s
+  pure s
+
+anA :: Parser String
+anA = do
+  s <- split'
+  guard $ toLower s == "a"
+  pure s
+
+anB :: Parser String
+anB = do
+  s <- split'
+  guard $ toLower s == "b"
+  pure s
+
+aOrB = some anA <|> some anB
+
+manyAOrB = many aOrB
+
+aThenB = do
+  _ <- some anA
+  some anB
+
+-- Most credit goes to:
+-- https://github.com/beckyconning/purescript-by-example/blob/master/chapter11/src/String.purs
+-- for this solution
+containsAsThenBs :: String -> Boolean
+containsAsThenBs = interpret <<< S.runParser aThenB
+  where
+    interpret :: Either (Array String) (Tuple (Tuple (Array String) String) (Array String)) -> Boolean
+    interpret (Right (Tuple (Tuple _ "") _)) = true
+    interpret _                              = false
+
+containsAsOrBs :: String -> Boolean
+containsAsOrBs = interpret <<< S.runParser manyAOrB
+  where
+    interpret :: Either (Array String) (Tuple (Tuple (Array (Array String)) String) (Array String)) -> Boolean
+    interpret (Right (Tuple (Tuple _ "") _)) = true
+    interpret _                              = false
+
