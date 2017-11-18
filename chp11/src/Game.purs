@@ -1,19 +1,21 @@
 module Game where
 
 import Prelude
-import Data.List as L
-import Data.Map as M
-import Data.Set as S
+
 import Control.Monad.RWS (RWS)
 import Control.Monad.Reader.Class (ask)
 import Control.Monad.State.Class (get, modify, put)
 import Control.Monad.Writer.Class (tell)
 import Data.Coords (Coords(..), prettyPrintCoords, coords)
-import Data.Foldable (for_)
+import Data.Foldable (foldr, for_)
 import Data.GameEnvironment (GameEnvironment(..))
 import Data.GameItem (GameItem(..), readItem)
 import Data.GameState (GameState(..))
+import Data.List as L
+import Data.Map as M
 import Data.Maybe (Maybe(..))
+import Data.Set as S
+import Data.Traversable (traverse_)
 
 type Log = L.List String
 
@@ -33,7 +35,7 @@ pickUp item = do
   case state.player `M.lookup` state.items of
     Just items
       | item `S.member` items -> do
-          let newItems = M.update (Just <<< S.delete item) state.player state.items
+          let newItems = M.update (Just <<< S.delete item) state.player state.items -- Update items of where the player is (state.player)
               newInventory = S.insert item state.inventory
           put $ GameState state { items     = newItems
                                 , inventory = newInventory
@@ -64,6 +66,16 @@ use Matches = do
                            , "You win!"
                            ])
     else tell (L.singleton "You don't have anything to light.")
+
+cheat :: Game Unit
+cheat = do
+  GameState state <- get
+  let newItems = M.update (Just <<< S.intersection S.empty) state.player state.items
+      newInventory = S.union (foldr S.union S.empty state.items) state.inventory
+  put $ GameState state { items = newItems
+                        , inventory = newInventory
+                        }
+  traverse_ (\x -> tell (L.singleton ("You now have all the items!"))) newInventory
 
 game :: Array String -> Game Unit
 game ["look"] = do
@@ -98,5 +110,6 @@ game ["debug"] = do
       state :: GameState <- get
       tell (L.singleton (show state))
     else tell (L.singleton "Not running in debug mode.")
+game ["cheat"] = cheat
 game [] = pure unit
 game _  = tell (L.singleton "I don't understand.")
