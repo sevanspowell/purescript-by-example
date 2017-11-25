@@ -2,6 +2,7 @@ module Game where
 
 import Prelude
 
+import Control.Monad.Except.Trans (ExceptT(..), throwError)
 import Control.Monad.RWS (RWS)
 import Control.Monad.Reader.Class (ask)
 import Control.Monad.State.Class (get, modify, put)
@@ -19,7 +20,7 @@ import Data.Traversable (traverse_)
 
 type Log = L.List String
 
-type Game = RWS GameEnvironment Log GameState
+type Game = ExceptT String (RWS GameEnvironment Log GameState)
 
 describeRoom :: Game Unit
 describeRoom = do
@@ -109,7 +110,8 @@ game ["debug"] = do
     then do
       state :: GameState <- get
       tell (L.singleton (show state))
-    else tell (L.singleton "Not running in debug mode.")
+    else
+      throwError "Not running in debug mode."
 game ["cheat"] = cheat
 game [] = pure unit
 game _  = tell (L.singleton "I don't understand.")

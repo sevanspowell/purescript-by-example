@@ -1,10 +1,11 @@
 module Main where
 
 import Prelude
-import Node.ReadLine as RL
+
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Exception (EXCEPTION)
+import Control.Monad.Except.Trans (runExceptT)
 import Control.Monad.RWS (RWSResult(..), runRWS)
 import Data.Either (Either(..))
 import Data.Foldable (for_)
@@ -14,6 +15,7 @@ import Data.Maybe (Maybe(..))
 import Data.Newtype (wrap)
 import Data.String (split)
 import Game (game)
+import Node.ReadLine as RL
 import Node.Yargs.Applicative (Y, runY, flag, yarg)
 import Node.Yargs.Setup (usage)
 
@@ -39,7 +41,7 @@ runGame env = do
              | eff
              ) Unit
     lineHandler currentState input = do
-      case runRWS (game (split (wrap " ") input)) env currentState of
+      case runRWS (runExceptT (game (split (wrap " ") input))) env currentState of
         RWSResult state _ written -> do
           for_ written log
           RL.setLineHandler interface $ lineHandler state
