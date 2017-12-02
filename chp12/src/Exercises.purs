@@ -93,3 +93,14 @@ getToFile :: forall eff. URI -> String -> ExceptT ErrorCode (Async (http :: HTTP
 getToFile uri path = do
   response <- getEx uri
   writeFileContEx path response
+
+runGetToFile :: forall eff. URI -> String -> Eff (http :: HTTP, fs :: FS, console :: CONSOLE | eff) Unit
+runGetToFile uri path = runContT (runExceptT $ getToFile uri path) logShow
+
+runGetToFile2 :: forall eff. URI -> String -> Eff (http :: HTTP, fs :: FS, console :: CONSOLE | eff) Unit
+runGetToFile2 uri path = runContT (runExceptT $ f uri path) logShow
+  where
+  f :: forall eff1. URI -> String -> ExceptT ErrorCode (Async (http :: HTTP, fs :: FS | eff1)) Unit
+  f uri path = do
+    response <- getEx uri
+    writeFileContEx path response
