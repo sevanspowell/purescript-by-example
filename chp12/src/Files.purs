@@ -40,6 +40,17 @@ readFileCont path = ContT $ readFile path
 writeFileCont :: forall eff. FilePath -> String -> Async (fs :: FS | eff) (Either ErrorCode Unit)
 writeFileCont path text = ContT $ writeFile path text
 
+copyFileCont
+  :: forall eff
+   . FilePath
+  -> FilePath
+  -> Async (fs :: FS | eff) (Either ErrorCode Unit)
+copyFileCont src dest = do
+  e <- readFileCont src
+  case e of
+    Left err -> pure $ Left err
+    Right content -> writeFileCont dest content
+
 readFileContEx :: forall eff. FilePath -> ExceptT ErrorCode (Async (fs :: FS | eff)) String
 readFileContEx path = ExceptT $ readFileCont path
 
