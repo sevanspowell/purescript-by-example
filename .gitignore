@@ -5,3 +5,4 @@ bower_components
 output
 chp*/dist
 chp*/node_modules
+purescript-book/
