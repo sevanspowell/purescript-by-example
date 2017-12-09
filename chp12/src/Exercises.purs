@@ -4,13 +4,17 @@ import Files
 import Network.HTTP.Client
 import Prelude
 
+import Control.Alternative ((<|>))
+import Control.Apply (lift2)
 import Control.Monad.Cont.Trans (ContT(..), runContT)
 import Control.Monad.Eff (kind Effect, Eff)
 import Control.Monad.Eff.Console (CONSOLE, logShow)
 import Control.Monad.Except.Trans (ExceptT(..), runExceptT)
+import Control.Parallel (parallel, sequential)
 import Data.Either (Either(..))
 import Data.Foldable (foldl)
 import Data.Function.Uncurried (Fn2, runFn2)
+import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse, traverseDefault, traverse_)
 import Types (Async)
 
@@ -104,3 +108,23 @@ runGetToFile2 uri path = runContT (runExceptT $ f uri path) logShow
   f uri path = do
     response <- getEx uri
     writeFileContEx path response
+
+-- url1 = "https://jsonplaceholder.typicode.com/posts/1"
+-- url2 = "https://jsonplaceholder.typicode.com/comments"
+
+concatenateHTTPRequests :: String -> String -> Eff (http :: HTTP, console :: CONSOLE) Unit
+concatenateHTTPRequests url1 url2 = flip runContT logShow do
+  sequential $
+    lift2 append
+      <$> parallel (get url1)
+      <*> parallel (get url2)
+
+-- Returns a value iff the computation provides a result within the given number
+-- of milliseconds
+timeout :: forall a eff
+         . Milliseconds
+        -> Async (timeout :: TIMEOUT | eff) a
+        -> Async (timeout :: TIMEOUT | eff) (Maybe a)
+timeout t f = sequential $ timer <|> (runContT f)
+  where timer       = setTimeout t >>= (\_ -> pure $ Nothing)
+        computation = f            >>= (\r -> pure $ Just r)
